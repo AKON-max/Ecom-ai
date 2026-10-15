@@ -6,7 +6,6 @@
 | Status | implemented |
 | Version | 1.0.0 |
 | Owner | Agent Service |
-| Last reviewed | 2026-10-15 |
 | Related modules | `agent-service/api`, `agent-service/agents`, `agent-service/context`, `agent-service/observability` |
 | Regression source | `agent-service/cases.yml`, `tests/test_agent_contract.py` |
 
@@ -147,9 +146,3 @@ received
 - AC-04：跨账号订单无法被查询。
 - AC-05：Prompt 攻击响应不包含系统 Prompt 或 hidden reasoning。
 - AC-06：没有模型 Key 时，非 RAG 主路径仍可返回确定性结果。
-
-## 12. 变更记录
-
-| 日期 | 版本 | 变更 |
-|---|---|---|
-| 2026-10-15 | 1.0.0 | 建立可追踪运行时契约 |

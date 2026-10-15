@@ -37,3 +37,7 @@ tasks.md   分阶段任务和需求追踪
 | 002 | Tool and RAG Authority | implemented |
 | 003 | Refund and Return HITL | implemented |
 | 004 | Safety and Regression Evaluation | implemented |
+
+## 总体设计
+
+项目级设计、技术选型、模块、测试和里程碑见 [`DEV_SPEC.md`](../DEV_SPEC.md)。
