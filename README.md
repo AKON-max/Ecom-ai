@@ -15,7 +15,7 @@ Ecom-ai 是一个面向电商售后场景的客服 Agent 系统，覆盖实时�
 
 ## 开发规格
 
-完整设计说明见 [`DEV_SPEC.md`](DEV_SPEC.md)。
+完整设计说明见 [`specs/DEV_SPEC.md`](specs/DEV_SPEC.md)。
 
 ## 架构
 
