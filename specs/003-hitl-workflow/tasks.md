@@ -1,27 +1,51 @@
 # Tasks: Refund and Return HITL
 
-- [x] T-HITL-01 实现未发货退款资格判断
-- [x] T-HITL-02 实现已发货退款阻止
-- [x] T-HITL-03 实现签收后退货窗口判断
-- [x] T-HITL-04 实现 LangGraph 两套 StateGraph
-- [x] T-HITL-05 生成 workflow_id 和 resume_token
-- [x] T-HITL-06 实现冻结字段复核
-- [x] T-HITL-07 实现批准、拒绝和补充信息
-- [x] T-HITL-08 实现幂等恢复
-- [x] T-TEST-01 添加 3 条 Resume 回归 case
-- [ ] T-PROD-01 Checkpoint 持久化
-- [ ] T-PROD-02 审批越权和角色权限矩阵
+## Phase 1 · Eligibility
+
+- [x] T-HITL-01 未发货退款资格
+- [x] T-HITL-02 已发货退款阻止
+- [x] T-HITL-03 签收后退货窗口
+- [x] T-HITL-04 冻结字段定义
+
+## Phase 2 · Graph and Checkpoint
+
+- [x] T-HITL-05 RefundApprovalGraph
+- [x] T-HITL-06 ReceivedReturnGraph
+- [x] T-HITL-07 workflow_id / checkpoint
+- [x] T-HITL-08 resume_token
+- [x] T-HITL-09 pending_action 响应
+
+## Phase 3 · Resume
+
+- [x] T-HITL-10 token 校验
+- [x] T-HITL-11 checkpoint 校验
+- [x] T-HITL-12 冻结字段漂移校验
+- [x] T-HITL-13 approved / rejected / needs_more_info
+- [x] T-HITL-14 idempotency key
+- [x] T-HITL-15 reviewer identity Trace
+
+## Phase 4 · Verification
+
+- [x] T-TEST-01 unshipped-refund-hitl
+- [x] T-TEST-02 shipped-refund-blocked
+- [x] T-TEST-03 received-return
+- [x] T-TEST-04 invalid-token
+- [x] T-TEST-05 missing-checkpoint
+- [x] T-TEST-06 approved-idempotent
+- [ ] T-PROD-01 PostgreSQL checkpoint
+- [ ] T-PROD-02 审批角色权限矩阵
+- [ ] T-PROD-03 并发锁和跨实例幂等
 
 ## Traceability
 
-| Requirement | Test / Evidence |
-|---|---|
-| R-HITL-01 | unshipped-refund-hitl |
-| R-HITL-02 | shipped-refund-blocked-before-workflow |
-| R-HITL-03 | received-return-workflow |
-| R-HITL-04 | response contract |
-| R-HITL-05 | invalid-token case |
-| R-HITL-06 | drift validation |
-| R-HITL-07 | approved-idempotent case |
-| R-HITL-08 | rejected / needs_more_info |
-| R-HITL-09 | forbidden text assertions |
+| Requirement | Task | Test |
+|---|---|---|
+| R-HITL-01 | T-HITL-01 | unshipped |
+| R-HITL-02 | T-HITL-02 | shipped blocked |
+| R-HITL-03 | T-HITL-03 | received return |
+| R-HITL-04 | T-HITL-07 | response contract |
+| R-HITL-05 | T-HITL-10 | invalid token |
+| R-HITL-06 | T-HITL-12 | drift tests |
+| R-HITL-07 | T-HITL-14 | idempotent |
+| R-HITL-08 | T-HITL-13 | resume decisions |
+| R-HITL-09 | T-HITL-04 | forbidden text |

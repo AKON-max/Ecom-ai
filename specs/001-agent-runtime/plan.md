@@ -4,65 +4,97 @@
 |---|---|
 | Spec | `001-agent-runtime` |
 | Status | implemented |
-| Depends on | `api/schemas.py`, `agents/customer_service_agent.py`, `tools/runtime_context.py`, `observability/trace.py` |
-| Rollback | 回退 Agent 镜像；Java 业务后端与数据库无需变更 |
+| Components | `api`, `agents`, `context`, `tools`, `rag`, `workflows`, `observability` |
+| State | SessionStore、TraceStore、CheckpointStore 当前为进程内 |
+| Rollback | 回退 Agent 服务；业务后端无需同步回滚 |
 
-## 1. 组件边界
+## 1. 请求处理伪代码
 
-| 组件 | 输入 | 输出 | 不得做 |
-|---|---|---|---|
-| `EcomAiAgent.chat` | `ChatRequest` | `ChatResponse` | 不直接访问 Java 数据库 |
-| `RouterClient` | 用户消息 + 受控上下文 | `RoutePlan` | 不绕过工具白名单 |
-| `ToolRuntime` | 工具名 + 参数 | `ToolCallTrace` | 不执行写业务动作 |
-| `HybridRetrieval` | Query + Domain | citations | 不生成最终话术 |
-| `AfterSaleGraph` | 售后意图 + 订单快照 | workflow state | 不执行真实退款 |
-| `TraceStore` | 结构化事件 | 公开 Trace | 不保存 hidden CoT |
+```python
+def chat(request: ChatRequest) -> ChatResponse:
+    context = build_runtime_context(request)
+    source_report = inspect_request_sources(request)
+    guard = deterministic_guard(request, context, source_report)
+    if guard.blocked:
+        return security_response(guard)
 
-## 2. 请求时序
+    route = router.plan_intent(request, context, safe_context)
+    route = enforce_policy(route, context)
+    execution = execute_route(route, context)
 
-```text
-POST /chat
-  → validate ChatRequest
-  → load Runtime Context
-  → Source Guard 扫描 history / RAG / tool text
-  → deterministic guard
-  → router model / deterministic fallback
-  → tool / rag / workflow / degradation / security
-  → answer model with controlled facts
-  → trace + cost
-  → ChatResponse
+    if execution.kind == "clarification":
+        return clarification_response(execution)
+    if execution.kind == "workflow":
+        return workflow_response(execution)
+    if execution.kind == "degradation":
+        return degradation_response(execution)
+
+    answer = answer_client.compose_answer(
+        request=request,
+        context=context,
+        execution=execution,
+    )
+    return build_chat_response(answer, execution, context)
 ```
 
-## 3. 路由约束
+## 2. 组件交互
 
-模型只能返回 `Intent`、`required_tools`、`knowledge_domains` 和风险提示。系统在模型输出后执行：
+```mermaid
+sequenceDiagram
+    participant API
+    participant Guard
+    participant Router
+    participant Tool
+    participant RAG
+    participant WF
+    participant Answer
+    API->>Guard: scan sources
+    Guard-->>API: sanitized context
+    API->>Router: route request
+    Router-->>API: RoutePlan
+    alt tool path
+        API->>Tool: execute read-only tool
+        Tool-->>API: ToolCallTrace
+    else rag path
+        API->>RAG: retrieve knowledge
+        RAG-->>API: citations
+    else workflow path
+        API->>WF: create or resume workflow
+        WF-->>API: paused/completed
+    end
+    API->>Answer: compose answer
+    Answer-->>API: final text
+```
 
-1. Intent 枚举校验；
-2. Tool 白名单校验；
-3. Runtime Context 订单归属校验；
-4. 高风险意图强制切换到 Workflow 或 Guard；
-5. Tool 必填参数校验；
-6. 需要澄清时返回 `ClarificationRequest`。
+## 3. 状态所有权
 
-## 4. 状态与持久化
+| 状态 | Owner | 生命周期 |
+|---|---|---|
+| Runtime Context | request | 单次请求 |
+| Session State | session store | 会话 |
+| Trace | TraceStore | 会话 |
+| Checkpoint | Workflow | 暂停到恢复 |
+| Cost | session state | 单次请求 |
 
-当前版本状态保存在进程内：
+## 4. 配置
 
-- `SessionStateStore`
-- `TraceStore`
-- Workflow checkpoints
-- Cost records
+- `.env`：Provider、Base URL、服务 Token、离线开关；
+- `agent_capabilities.json`：前端能力声明；
+- `cases.yml`：固定回归 case；
+- `prompts/`：Prompt Registry。
 
-限制：多实例部署前必须迁移到 Redis/PostgreSQL 或显式使用 sticky session。
+## 5. 并发与线程
 
-## 5. 风险与回滚
+- FastAPI 请求线程只负责协议和依赖注入；
+- 模型调用和工具调用不共享 Session；
+- TraceStore 采用锁保护；
+- SessionStore 当前为进程内对象；
+- Workflow resume 需要幂等锁或唯一约束。
 
-| 风险 | 缓解 |
-|---|---|
-| 模型路由误判 | 白名单 + 高风险 Guard |
-| 工具参数错误 | 后端校验 + clarification |
-| Trace 泄露内部推理 | `TraceEventNormalizer` 只保留公开字段 |
-| 供应商超时 | 降级转人工 |
-| 进程重启丢状态 | 文档声明单实例边界，后续引入持久化 |
+## 6. 测试与回滚
 
-回滚策略：回退 Agent 服务版本即可；不需要回滚 Java 业务库。
+- Schema 测试；
+- RoutePlan 约束测试；
+- 跨账号订单测试；
+- Tool/RAG/Workflow/Security case；
+- 灰度时先回退 Agent 服务，再检查持久化状态。
