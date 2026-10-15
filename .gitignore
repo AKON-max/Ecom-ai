@@ -1,0 +1,44 @@
+# Local-only course snapshots and delivery material
+/agent-course-versions/
+/.agents/
+/.trae/
+/doc/
+/architecture/
+course.env
+*.local.md
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.chroma/
+.workflow_checkpoints/
+.env
+.env.*
+!.env.example
+
+# Node / frontend
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Java / Maven
+target/
+.mvn/repository/
+
+# Runtime output
+logs/
+downloads/
+*.log
+*.pid
+test-results/
+playwright-report/
+coverage/
+/chat_body.json
+/docker-compose.infra.yml
+
+*.tar.gz
+

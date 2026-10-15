@@ -1,0 +1,70 @@
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-ecom_ai}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+  chroma:
+    image: chromadb/chroma:1.0.8
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma-data:/chroma/chroma
+
+  ecommerce-service:
+    build:
+      context: ./ecommerce-backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-ecom_ai}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      SPRING_PROFILES_ACTIVE: local
+      AGENT_SERVICE_AUTH_TOKEN: ${AGENT_SERVICE_AUTH_TOKEN:-local-agent-service-token}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "8081:8081"
+
+  agent-service:
+    build:
+      context: .
+      dockerfile: agent-service/Dockerfile
+    environment:
+      ECOMMERCE_BASE_URL: http://ecommerce-service:8081
+      AGENT_OPENAI_API_KEY: ${AGENT_OPENAI_API_KEY:-}
+      AGENT_OPENAI_BASE_URL: ${AGENT_OPENAI_BASE_URL:-https://api.siliconflow.cn/v1}
+      AGENT_OPENAI_MODEL: ${AGENT_OPENAI_MODEL:-Qwen/Qwen3-8B}
+      AGENT_EMBEDDING_MODEL: ${AGENT_EMBEDDING_MODEL:-Qwen/Qwen3-Embedding-4B}
+      AGENT_SERVICE_AUTH_TOKEN: ${AGENT_SERVICE_AUTH_TOKEN:-local-agent-service-token}
+      AGENT_OFFLINE_RAG: ${AGENT_OFFLINE_RAG:-0}
+      AGENT_OFFLINE_FACTS: ${AGENT_OFFLINE_FACTS:-0}
+      AGENT_DISABLE_LLM: ${AGENT_DISABLE_LLM:-0}
+    depends_on:
+      - ecommerce-service
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_AGENT_BASE_URL: http://localhost:8000
+        VITE_ECOMMERCE_BASE_URL: http://localhost:8081
+    depends_on:
+      - agent-service
+      - ecommerce-service
+    ports:
+      - "5173:80"
+
+volumes:
+  mysql-data:
+  chroma-data:

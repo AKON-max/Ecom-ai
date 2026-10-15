@@ -1,0 +1,4 @@
+agent:
+  service:
+    # 仅供 local Profile 的本地服务联调；生产 Profile 不提供默认服务令牌。
+    auth-token: ${AGENT_SERVICE_AUTH_TOKEN:ecom-ai-agent-service}
